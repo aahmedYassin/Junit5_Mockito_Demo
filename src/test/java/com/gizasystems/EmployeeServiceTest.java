@@ -6,6 +6,7 @@ import com.gizasystems.entity.Employee;
 import com.gizasystems.repository.EmployeeRepo;
 import com.gizasystems.service.EmployeeDataValidation;
 import com.gizasystems.service.EmployeeService;
+import org.hibernate.mapping.Any;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,8 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class EmployeeServiceTest {
@@ -142,9 +142,9 @@ public class EmployeeServiceTest {
     }
 
     @Test
-    public void updateEmployeeTest_IdNotExist() {
+    public void updateEmployeeTest_Id_Not_Exist() {
 
-        doReturn(null).when(employeeRepo).findById(anyInt());
+        doReturn(Optional.empty()).when(employeeRepo).findById(anyInt());
 
         assertThrows(RuntimeException.class, () -> {
 
@@ -154,11 +154,12 @@ public class EmployeeServiceTest {
 
 
     @Test
-    public void updateEmployeeTest_IdExist_And_NameIsUniqe() {
+    public void updateEmployeeTest_Id_Exist_And_NameIsUniqe() {
         Employee employee = new Employee(1, "ahmed", 26.0, "yassin@gmail.com", 1234.0);
-
         doReturn(Optional.of(employee)).when(employeeRepo).findById(anyInt());
         doNothing().when(employeeService).validateEmployee(any(EmployeeDtoRequest.class));
+        doNothing().when(employeeService).checkNameIsDuplicate(any(EmployeeDtoRequest.class), anyInt());
+
         doReturn(employee).when(employeeRepo).save(any(Employee.class));
         EmployeeDtoResponse employeeDtoResponse = employeeService.updateEmployee(new EmployeeDtoRequest("ahmed", 14, "yassin@gmail.com", 789.5), 1);
         assertNotNull(employeeDtoResponse);
@@ -168,17 +169,42 @@ public class EmployeeServiceTest {
 
     public void updateEmployeeTest_IdExist_And_NameIsDuplicate() {
         Employee employee = new Employee(1, "ahmed", 26.0, "yassin@gmail.com", 1234.0);
-
         doReturn(Optional.of(employee)).when(employeeRepo).findById(anyInt());
-        List<Employee> employeeList = new ArrayList<>();
-        employeeList.add(new Employee(1, "ahmed", 26.0, "yassin@gmail.com", 1234.0));
-        employeeList.add(new Employee(2, "yassin", 26.0, "yassin@gmail.com", 1234.0));
+        doNothing().when(employeeService).validateEmployee(any(EmployeeDtoRequest.class));
+        doThrow(RuntimeException.class).when(employeeService).checkNameIsDuplicate(any(EmployeeDtoRequest.class), anyInt());
 
-        doReturn(employeeList).when(employeeRepo).findAll();
         assertThrows(RuntimeException.class, () -> {
 
             employeeService.updateEmployee(new EmployeeDtoRequest("yassin", 12.5, "yassin@gmail.com", 123.5), 1);
         });
 
+    }
+
+    @Test
+    public void checkNameIsDuplicateTestNotThrow() {
+
+        List<Employee> employeeList = new ArrayList<>();
+        employeeList.add(new Employee(1, "ahmed", 26.0, "yassin@gmail.com", 1234.0));
+        employeeList.add(new Employee(2, "yassin", 26.0, "yassin@gmail.com", 1234.0));
+
+        doReturn(employeeList).when(employeeRepo).findAll();
+
+        assertDoesNotThrow(() -> {
+            employeeService.checkNameIsDuplicate(new EmployeeDtoRequest("ahmed", 36, "yassin@gmail.com", 1234.0), 1);
+        });
+    }
+
+    @Test
+    public void checkNameIsDuplicateTestThrow() {
+
+        List<Employee> employeeList = new ArrayList<>();
+        employeeList.add(new Employee(1, "ahmed", 26.0, "yassin@gmail.com", 1234.0));
+        employeeList.add(new Employee(2, "yassin", 26.0, "yassin@gmail.com", 1234.0));
+
+        doReturn(employeeList).when(employeeRepo).findAll();
+
+        assertThrows(RuntimeException.class, () -> {
+            employeeService.checkNameIsDuplicate(new EmployeeDtoRequest("yassin", 36, "yassin@gmail.com", 1234.0), 1);
+        });
     }
 }

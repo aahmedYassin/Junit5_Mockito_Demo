@@ -84,13 +84,9 @@ public class EmployeeService {
         Optional<Employee> employee = employeeRepo.findById(id);
         validateEmployee(employeeDto);
         if (employee.isPresent()) {
-            for (Employee emp : employeeRepo.findAll()) {
 
-                if (emp.getId() != id && emp.getName().equals(employeeDto.getName())) {
-                    throw new RuntimeException("Employee Name " + employeeDto.getName() + " Already Exist");
-                }
-            }
 
+            checkNameIsDuplicate(employeeDto, id);
 
             Employee emp = modelMapper.map(employeeDto, Employee.class);
             emp.setId(id);
@@ -112,6 +108,16 @@ public class EmployeeService {
             throw new RuntimeException("Employee id = " + id + " Not Exist");
         }
 
+    }
+
+    public void checkNameIsDuplicate(EmployeeDtoRequest employeeDto, int id) {
+
+        for (Employee emp : employeeRepo.findAll()) {
+
+            if (emp.getId() != id && emp.getName().equals(employeeDto.getName())) {
+                throw new RuntimeException("Employee Name " + employeeDto.getName() + " Already Exist");
+            }
+        }
     }
 
     public void validateEmployee(EmployeeDtoRequest employeeDto) {
